@@ -8,19 +8,12 @@ const PORT = process.env.PORT || 3000;
 // APIs
 
 app.get("/api/v1", (req, res) => {
-  res.send("<h1>Hello, This is Suzi.</h1>");
+  res.send("<h1>Hello, My Name is Suzi and I am a Voice Agent.</h1>");
 });
 
-app.get("/api/v1/hello", (req, res) => {
-  res.send("<h1>This is After the Domain and SSL Attchment.</h1>");
-});
-
-app.get("/api/v1/pm2", (req, res) => {
-  res.send("<h1>This is After PM2 has been added.</h1>");
-});
-
-app.get("/anshul", (req, res) => {
-  res.send("<h1>Mera name Anshul ha, ma pagal ladka hu</h1>");
+app.post("/api/v1/check-availablity", (req, res) => {
+  console.log(res.body);
+  res.send("Yooooooo");
 });
 
 app.listen(PORT, () => {
