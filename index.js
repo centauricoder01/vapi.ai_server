@@ -19,6 +19,10 @@ app.get("/api/v1/pm2", (req, res) => {
   res.send("<h1>This is After PM2 has been added.</h1>");
 });
 
+app.get("/anshul", (req, res) => {
+  res.send("<h1>Mera name Anshul ha, ma pagal ladka hu</h1>");
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on PORT: ${PORT}`);
 });
