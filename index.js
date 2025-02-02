@@ -15,7 +15,8 @@ app.get("/api/v1", (req, res) => {
 
 app.post("/api/v1/check-availablity", (req, res) => {
   const body = req.body;
-  const mainResponse = body.message.toolWithToolCallList[0].toolCall;
+  const mainResponse =
+    body.message.toolWithToolCallList[0].toolCall.function.arguments;
   console.log(mainResponse);
   res.send("Yooooooo");
 });
