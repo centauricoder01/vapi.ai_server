@@ -12,7 +12,7 @@ app.get("/api/v1", (req, res) => {
 });
 
 app.post("/api/v1/check-availablity", (req, res) => {
-  console.log(res.body);
+  console.log(res.body, "This is Body");
   res.send("Yooooooo");
 });
 
