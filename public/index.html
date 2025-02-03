@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Calendar Slot Checker</title>
+  </head>
+  <body>
+    <h1>Google Calendar Slot Checker</h1>
+
+    <button id="login">Login with Google</button>
+    <br /><br />
+    <input type="date" id="datePicker" />
+    <button id="checkSlots">Check Available Slots</button>
+
+    <h2>Available Slots</h2>
+    <ul id="slotsList"></ul>
+
+    <script>
+      // Redirect to Google Auth when login button is clicked
+      document.getElementById("login").addEventListener("click", async () => {
+        const response = await fetch("http://localhost:3000/auth");
+        const data = await response.json();
+        window.location.href = data.url; // Redirect to Google's auth page
+      });
+
+      // Extract the token from URL if present
+      const urlParams = new URLSearchParams(window.location.search);
+      let accessToken = urlParams.get("access_token");
+
+      // Fetch available slots
+      document
+        .getElementById("checkSlots")
+        .addEventListener("click", async () => {
+          if (!accessToken) {
+            alert("Please login first!");
+            return;
+          }
+
+          const date = document.getElementById("datePicker").value;
+          if (!date) {
+            alert("Please select a date!");
+            return;
+          }
+
+          const response = await fetch(
+            `http://localhost:3000/freeSlots?date=${date}`
+          );
+          const slots = await response.json();
+
+          const slotsList = document.getElementById("slotsList");
+          slotsList.innerHTML = ""; // Clear previous results
+
+          if (slots.length === 0) {
+            slotsList.innerHTML = "<li>No available slots</li>";
+          } else {
+            slots.forEach((slot) => {
+              const listItem = document.createElement("li");
+              listItem.textContent = `From: ${new Date(
+                slot.start
+              ).toLocaleTimeString()} - To: ${new Date(
+                slot.end
+              ).toLocaleTimeString()}`;
+              slotsList.appendChild(listItem);
+            });
+          }
+        });
+    </script>
+  </body>
+</html>
