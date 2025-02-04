@@ -1,4 +1,18 @@
+import dayjs from "dayjs";
+import fs from "fs";
 import { google } from "googleapis";
+import dotenv from "dotenv";
+dotenv.config();
+
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URL = process.env.REDIRECT_URL;
+
+const oauth2Client = new google.auth.OAuth2(
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URL
+);
 
 export const prompt = `
       # Context:
@@ -21,59 +35,56 @@ You must return the **start and end times** in **pure JSON format**, without any
 - Do **not** include explanations, text, or code formatting characters—return **only raw JSON**.
     `;
 
-// const credentials = JSON.parse(fs.readFileSync("credentials.json"));
-// const tokens = JSON.parse(fs.readFileSync("token.json"));
+export const isOverlapping = (slot, busy) => {
+  return (
+    dayjs(slot.start).isBefore(dayjs(busy.end)) &&
+    dayjs(slot.end).isAfter(dayjs(busy.start))
+  );
+};
 
-// const { client_secret, client_id, redirect_uris } = credentials.installed;
-// const oauth2Client = new google.auth.OAuth2(
-//   client_id,
-//   client_secret,
-//   redirect_uris[0]
-// );
-// oauth2Client.setCredentials(tokens);
+export const checkFreeSlots = async (date) => {
+  const tokens = JSON.parse(fs.readFileSync("token.json"));
+  oauth2Client.setCredentials(tokens);
+  const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-// const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+  const startTime = dayjs(date.starttime).format("YYYY-MM-DDTHH:mm:ssZ");
+  const endTime = dayjs(date.endtime).format("YYYY-MM-DDTHH:mm:ssZ");
 
-// export async function getFreeSlots(startTime, endTime) {
-//   const response = await calendar.freebusy.query({
-//     requestBody: {
-//       timeMin: startTime,
-//       timeMax: endTime,
-//       items: [{ id: "primary" }],
-//     },
-//   });
+  try {
+    const response = await calendar.freebusy.query({
+      requestBody: {
+        timeMin: startTime,
+        timeMax: endTime,
+        timeZone: "Asia/Kolkata",
+        items: [{ id: "primary" }],
+      },
+    });
 
-//   const busySlots = response.data.calendars.primary.busy;
-//   let allSlots = [];
-//   let freeSlots = [];
+    const busySlots = response.data.calendars.primary.busy || [];
+    let allSlots = [];
+    let freeSlots = [];
 
-//   let start = new Date(startTime);
-//   let end = new Date(endTime);
+    let start = dayjs(startTime);
+    const end = dayjs(endTime);
 
-//   while (start < end) {
-//     let slotStart = new Date(start);
-//     let slotEnd = new Date(start.getTime() + 30 * 60 * 1000); // 30-minute slots
+    while (start.isBefore(end)) {
+      let slotStart = start.tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ssZ");
+      let slotEnd = start
+        .add(1, "hour")
+        .tz("Asia/Kolkata")
+        .format("YYYY-MM-DDTHH:mm:ssZ");
 
-//     allSlots.push({ start: slotStart, end: slotEnd });
-//     start = slotEnd;
-//   }
+      allSlots.push({ start: slotStart, end: slotEnd });
 
-//   busySlots.forEach((busy) => {
-//     let busyStart = new Date(busy.start);
-//     let busyEnd = new Date(busy.end);
-//     allSlots = allSlots.filter(
-//       (slot) => !(slot.start >= busyStart && slot.end <= busyEnd)
-//     );
-//   });
+      start = start.add(1, "hour");
+    }
 
-//   freeSlots = allSlots;
-//   return freeSlots;
-// }
+    freeSlots = allSlots.filter(
+      (slot) => !busySlots.some((busy) => isOverlapping(slot, busy))
+    );
 
-// Example Usage
-// (async () => {
-//   const startTime = "2025-02-09T09:00:00.000Z";
-//   const endTime = "2025-02-09T17:00:00.000Z";
-//   const availableSlots = await getFreeSlots(startTime, endTime);
-//   console.log("Available Slots:", availableSlots);
-// })();
+    return freeSlots;
+  } catch (error) {
+    return error.message;
+  }
+};

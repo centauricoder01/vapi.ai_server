@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { prompt } from "./utils.js";
+import { prompt, checkFreeSlots, isOverlapping } from "./utils.js";
 import axios from "axios";
 import dayjs from "dayjs";
 import { google } from "googleapis";
@@ -50,66 +50,144 @@ app.get("/oauth2callback", async (req, res) => {
   const { tokens } = await oauth2Client.getToken(code);
   oauth2Client.setCredentials(tokens);
 
-  fs.writeFileSync("token.json", JSON.stringify(tokens)); // Store token for later use
+  fs.writeFileSync("token.json", JSON.stringify(tokens));
 
-  // Redirect back to frontend with token
   res.redirect(`/index.html?access_token=${tokens.access_token}`);
 });
 
-app.get("/freeSlots", async (req, res) => {
-  if (!fs.existsSync("token.json"))
-    return res.status(401).json({ error: "User not authenticated" });
+// app.get("/freeSlots", async (req, res) => {
+//   if (!fs.existsSync("token.json"))
+//     return res.status(401).json({ error: "User not authenticated" });
 
-  const tokens = JSON.parse(fs.readFileSync("token.json"));
-  oauth2Client.setCredentials(tokens);
-  const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+//   const tokens = JSON.parse(fs.readFileSync("token.json"));
+//   oauth2Client.setCredentials(tokens);
+//   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-  const { date } = req.query; // Expected format: YYYY-MM-DD
-  const startTime = `${date}T09:00:00+05:30`;
-  const endTime = `${date}T17:00:00+05:30`;
+//   const body = req.body;
+//   const startTime = `${body.date}T09:00:00+05:30`;
+//   const endTime = `${body.date}T17:00:00+05:30`;
 
-  try {
-    const response = await calendar.freebusy.query({
-      requestBody: {
-        timeMin: startTime,
-        timeMax: endTime,
-        timeZone: "Asia/Kolkata",
-        items: [{ id: "primary" }],
+//   try {
+//     const response = await calendar.freebusy.query({
+//       requestBody: {
+//         timeMin: startTime,
+//         timeMax: endTime,
+//         timeZone: "Asia/Kolkata",
+//         items: [{ id: "primary" }],
+//       },
+//     });
+
+//     const busySlots = response.data.calendars.primary.busy || [];
+//     let allSlots = [];
+//     let freeSlots = [];
+
+//     let start = dayjs(startTime);
+//     const end = dayjs(endTime);
+
+//     while (start.isBefore(end)) {
+//       let slotStart = start.tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ssZ");
+//       let slotEnd = start
+//         .add(1, "hour")
+//         .tz("Asia/Kolkata")
+//         .format("YYYY-MM-DDTHH:mm:ssZ");
+
+//       allSlots.push({ start: slotStart, end: slotEnd });
+
+//       start = start.add(1, "hour");
+//     }
+
+//     freeSlots = allSlots.filter(
+//       (slot) => !busySlots.some((busy) => isOverlapping(slot, busy))
+//     );
+
+//     res.json(freeSlots);
+//   } catch (error) {
+//     res.status(500).send(error.message);
+//   }
+// });
+
+app.post("/check-availablity", async (req, res) => {
+  const body = req.body;
+
+  // { _name: 'r Patel', _dateAndTime: 'tomorrow, 12 PM' }
+  const mainResponse =
+    body.message.toolWithToolCallList[0].toolCall.function.arguments;
+
+  const userName = mainResponse._name;
+  const dateAndTime = mainResponse._dateAndTime;
+
+  let todaysDate = new Date().toISOString();
+
+  const UserPrompt = `
+  This is the current date/time: ${todaysDate}
+  This is when the user would like to book: ${dateAndTime}
+  `;
+
+  const response = await axios.post(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: prompt },
+        { role: "user", content: UserPrompt },
+      ],
+      temperature: 0,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
       },
-    });
-
-    const busySlots = response.data.calendars.primary.busy || [];
-    let allSlots = [];
-    let freeSlots = [];
-
-    let start = dayjs(startTime); // Start time (UTC)
-    const end = dayjs(endTime);
-
-    while (start.isBefore(end)) {
-      let slotStart = start.tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ssZ");
-      let slotEnd = start
-        .add(1, "hour")
-        .tz("Asia/Kolkata")
-        .format("YYYY-MM-DDTHH:mm:ssZ");
-
-      allSlots.push({ start: slotStart, end: slotEnd });
-
-      start = start.add(1, "hour");
     }
+  );
 
-    // Remove busy slots
-    busySlots.forEach((busy) => {
-      let busyStart = busy.start;
-      let busyEnd = busy.end;
-      allSlots = allSlots.filter(
-        (slot) => !(slot.start === busyStart && slot.end === busyEnd)
-      );
+  const dateAndTimeInJson = JSON.parse(
+    response.data.choices[0]?.message?.content
+  );
+
+  const dayOfWeek = dayjs(dateAndTimeInJson?.starttime).format("dddd");
+
+  // HANDLE WEEKENDS
+  if (dayOfWeek === "Sunday" || dayOfWeek === "Saturday") {
+    return res.status(200).json({
+      results: [
+        {
+          toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
+          result: "Sorry, We Don't accept booking on Saturday and Sundays.",
+        },
+      ],
     });
+  }
 
-    freeSlots = allSlots;
-    res.json(freeSlots);
+  // HANDLE WEEKDAYS
+  try {
+    const checkAvailability = await checkFreeSlots(dateAndTimeInJson);
+
+    const allSlots = checkAvailability
+      .map((slot) => {
+        return `${dayjs(slot.start).format("h A")} to ${dayjs(slot.end).format(
+          "h A"
+        )}`;
+      })
+      .join(", ");
+
+    return res.status(200).json({
+      results: [
+        {
+          toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
+          result: `Here are the available time slots: ${allSlots}. Let me know which one works for you!`,
+        },
+      ],
+    });
   } catch (error) {
-    res.status(500).send(error.message);
+    return res.status(200).json({
+      results: [
+        {
+          toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
+          result: "Sorry, Some Error Occured",
+        },
+      ],
+    });
   }
 });
 
@@ -185,67 +263,6 @@ app.post("/bookSlot", async (req, res) => {
     console.error("Error booking slot:", error);
     return res.status(500).json({ error: "Failed to book meeting." });
   }
-});
-
-app.post("/check-availablity", async (req, res) => {
-  const body = req.body;
-
-  // { _name: 'r Patel', _dateAndTime: 'tomorrow, 12 PM' }
-  // const mainResponse =
-  //   body.message.toolWithToolCallList[0].toolCall.function.arguments;
-
-  // const userName = mainResponse._name;
-  // const dateAndTime = mainResponse._dateAndTime;
-
-  let todaysDate = new Date().toISOString();
-
-  const UserPrompt = `
-  This is the current date/time: ${todaysDate}
-  This is when the user would like to book: ${body._dateAndTime}
-  `;
-
-  const response = await axios.post(
-    "https://api.openai.com/v1/chat/completions",
-    {
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: UserPrompt },
-      ],
-
-      temperature: 0,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  const dateAndTimeInJson = JSON.parse(
-    response.data.choices[0]?.message?.content
-  );
-
-  const dayOfWeek = dayjs(dateAndTimeInJson?.starttime).format("dddd");
-
-  // HANDLE WEEKENDS
-  if (dayOfWeek === "Sunday" || dayOfWeek === "Saturday") {
-    return res.status(200).json({
-      results: [
-        {
-          toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
-          result: "Sorry, We Don't accept booking on Saturday and Sundays.",
-        },
-      ],
-    });
-  }
-
-  // HANDLE WEEKDAYS
-
-  res
-    .status(200)
-    .json({ response: response.data.choices[0]?.message?.content });
 });
 
 app.listen(PORT, () => {
