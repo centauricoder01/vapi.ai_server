@@ -192,12 +192,24 @@ app.post("/check-availablity", async (req, res) => {
 });
 
 app.post("/bookSlot", async (req, res) => {
-  const { name, email, timeslot } = req.body;
+  const body = req.body;
 
-  if (!name || !email || !timeslot) {
-    return res
-      .status(400)
-      .json({ error: "Missing required fields: name, email, timeslot" });
+  const mainResponse =
+    body.message.toolWithToolCallList[0].toolCall.function.arguments;
+
+  const name = mainResponse._name;
+  const dateAndTime = mainResponse._time;
+  const email = mainResponse._email;
+
+  if (!name || !email || !dateAndTime) {
+    return res.status(200).json({
+      results: [
+        {
+          toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
+          result: `Please provide all the details, like Name, Email, Date and Time`,
+        },
+      ],
+    });
   }
 
   if (!fs.existsSync("token.json")) {
@@ -208,37 +220,71 @@ app.post("/bookSlot", async (req, res) => {
   oauth2Client.setCredentials(tokens);
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-  // const startTime = new Date(timeslot);
-  const startTime = dayjs(timeslot)
-    .tz("Asia/Kolkata")
+  let todaysDate = new Date().toISOString();
+
+  const UserPrompt = `
+  This is the current date/time: ${todaysDate}
+  This is when the user would like to book: ${dateAndTime}
+  `;
+
+  console.log(dateAndTime, "dateAndTime");
+
+  const response = await axios.post(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: prompt },
+        { role: "user", content: UserPrompt },
+      ],
+      temperature: 0,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const dateAndTimeInJson = JSON.parse(
+    response.data.choices[0]?.message?.content
+  );
+
+  const userRequestTime = dayjs(dateAndTime)
+    .tz("Asia/Kolkata", true)
     .format("YYYY-MM-DDTHH:mm:ssZ");
-  // const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1-hour slot
-  const endTime = dayjs(timeslot)
-    .tz("Asia/Kolkata")
-    .add(1, "hour")
-    .format("YYYY-MM-DDTHH:mm:ssZ"); // 1-hour slot
+
+  console.log(userRequestTime, "userRequestTime");
 
   try {
     // Step 1: Check if slot is free
-    // const freeSlots = await getFreeSlots(
-    //   startTime.toISOString(),
-    //   endTime.toISOString()
-    // );
+    const freeSlots = await checkFreeSlots(dateAndTimeInJson);
 
-    // const isSlotFree = freeSlots.some(
-    //   (slot) => new Date(slot.start).toISOString() === startTime.toISOString()
-    // );
+    console.log(freeSlots, "These are free slots");
 
-    // if (!isSlotFree) {
-    //   return res.status(400).json({ error: "This slot is already booked." });
-    // }
+    const isSlotFree = freeSlots.some((slot) => slot.start === userRequestTime);
+
+    if (!isSlotFree) {
+      return res.status(200).json({
+        results: [
+          {
+            toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
+            result: `This Slot is already booked, Please choose another one.`,
+          },
+        ],
+      });
+    }
 
     // Step 2: Create the event in Google Calendar
     const event = {
       summary: `Meeting with ${name}`,
       description: `Scheduled Meeting with ${name} (${email})`,
-      start: { dateTime: startTime, timeZone: "Asia/Kolkata" },
-      end: { dateTime: endTime, timeZone: "Asia/Kolkata" },
+      start: { dateTime: userRequestTime, timeZone: "Asia/Kolkata" },
+      end: {
+        dateTime: dayjs(userRequestTime).add(1, "hour").toISOString(),
+        timeZone: "Asia/Kolkata",
+      },
       attendees: [{ email }],
       conferenceData: {
         createRequest: {
@@ -254,14 +300,29 @@ app.post("/bookSlot", async (req, res) => {
       conferenceDataVersion: 1,
     });
 
-    return res.json({
-      message: "Meeting booked successfully!",
-      eventId: createdEvent.data.id,
-      meetLink: createdEvent.data.hangoutLink || "No Meet link available",
+    return res.status(200).json({
+      results: [
+        {
+          toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
+          result: `Meeting booked successfully. Check your calendar. ${
+            createdEvent?.data?.hangoutLink
+              ? `Here is your Google Meet link: ${createdEvent.data.hangoutLink}`
+              : ""
+          }`,
+        },
+      ],
     });
   } catch (error) {
     console.error("Error booking slot:", error);
-    return res.status(500).json({ error: "Failed to book meeting." });
+    return res.status(200).json({
+      results: [
+        {
+          toolCallId: body.message.toolWithToolCallList[0].toolCall.id,
+          result: `An error occurred while booking the appointment. Please try again later.`,
+        },
+      ],
+    });
+    // return res.status(500).json({ error: "Failed to book meeting." });
   }
 });
 
