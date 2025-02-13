@@ -189,6 +189,7 @@ app.post("/check-availablity", async (req, res) => {
       })
       .join(", ");
 
+    console.log(allSlots, "This is All Slots, that Vapi will say.");
     return res.status(200).json({
       results: [
         {
