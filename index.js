@@ -305,12 +305,9 @@ You must return the **start and end times** in **pure JSON format**, without any
     response.data.choices[0]?.message?.content
   );
 
-  // const userRequestTime = dayjs(dateAndTime)
-  //   .tz(user.timeZone, true)
-  //   .format("YYYY-MM-DDTHH:mm:ssZ");
-
-  const userRequestTime = dayjs(dateAndTime).tz(user.timeZone).format();
-  const endTime = dayjs(userRequestTime).add(1, "hour").format();
+  const userRequestTime = dayjs(dateAndTime)
+    .tz(user.timeZone, true)
+    .format("YYYY-MM-DDTHH:mm:ssZ");
 
   console.log(userRequestTime, "This is User Request time");
 
@@ -334,6 +331,11 @@ You must return the **start and end times** in **pure JSON format**, without any
       });
     }
 
+    console.log(
+      dayjs(userRequestTime).add(1, "hour").toISOString(),
+      "This is End time for the metting."
+    );
+
     let [datePart, timePart] = userRequestTime.split("T");
     let [hours, minutes, seconds] = timePart.substring(0, 8).split(":");
     let offset = timePart.substring(8); // Preserve the original +05:30
@@ -344,14 +346,14 @@ You must return the **start and end times** in **pure JSON format**, without any
     // Construct the new time string
     const newTime = `${datePart}T${hours}:${minutes}:${seconds}${offset}`;
 
-    // console.log(newTime, "This is New time for ending");
+    console.log(newTime, "This is New time for ending");
 
     const event = {
       summary: `Meeting with ${name}`,
       description: `Scheduled Meeting with ${name} (${email})`,
       start: { dateTime: userRequestTime, timeZone: user.timeZone },
       end: {
-        dateTime: endTime,
+        dateTime: newTime,
         timeZone: user.timeZone,
       },
       attendees: [{ email }],
