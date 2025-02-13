@@ -129,6 +129,8 @@
         .addEventListener("submit", async function (e) {
           e.preventDefault();
 
+          const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
           const localStorageValue = localStorage.getItem("user_id");
 
           const formData = {
@@ -136,6 +138,7 @@
             content: document.getElementById("system_prompt").value,
             firstMessage: document.getElementById("firstMessage").value,
             user_id: localStorageValue,
+            userTimeZone,
           };
 
           try {

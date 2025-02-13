@@ -42,7 +42,7 @@ export const isOverlapping = (slot, busy) => {
   );
 };
 
-export const checkFreeSlots = async (date, token) => {
+export const checkFreeSlots = async (date, token, timezone) => {
   // const tokens = JSON.parse(fs.readFileSync("token.json"));
   oauth2Client.setCredentials(token);
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
@@ -55,7 +55,7 @@ export const checkFreeSlots = async (date, token) => {
       requestBody: {
         timeMin: startTime,
         timeMax: endTime,
-        timeZone: "Asia/Kolkata",
+        timeZone: timezone,
         items: [{ id: "primary" }],
       },
     });
@@ -68,10 +68,10 @@ export const checkFreeSlots = async (date, token) => {
     const end = dayjs(endTime);
 
     while (start.isBefore(end)) {
-      let slotStart = start.tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ssZ");
+      let slotStart = start.tz(timezone).format("YYYY-MM-DDTHH:mm:ssZ");
       let slotEnd = start
         .add(1, "hour")
-        .tz("Asia/Kolkata")
+        .tz(timezone)
         .format("YYYY-MM-DDTHH:mm:ssZ");
 
       allSlots.push({ start: slotStart, end: slotEnd });

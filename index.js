@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { prompt, checkFreeSlots } from "./utils.js";
+import { checkFreeSlots } from "./utils.js";
 import axios from "axios";
 import dayjs from "dayjs";
 import { google } from "googleapis";
@@ -103,6 +103,35 @@ app.post("/check-availablity", async (req, res) => {
   This is when the user would like to book: ${dateAndTime}
   `;
 
+  const prompt = `
+      # Context:
+      We have just asked the user when they would like to book a meeting. You will be provided with the current date and their response.
+
+      # Instructions:
+      You must return the **start and end times** in **pure JSON format**, without any extra characters, markdown, or explanations, and always in ${user.timeZone} timezone.
+
+      # Output example:
+      {
+        "starttime": "2024-04-19T09:00:00.000000",
+        "endtime": "2024-04-19T17:00:00.000000"
+      }
+
+      # Rules:
+      - The output **must be a valid JSON object** (without markdown formatting). 
+      - The **start time** must always be **9:00 AM ${user.timeZone}**.  
+      - The **end time** must always be **5:00 PM ${user.timeZone}**.  
+      - The output must **strictly match the example format**.  
+      - Do **not** include explanations, text, or code formatting characters—return **only raw JSON**.
+      - Timezone is important so when you give the starttime and endtime, it should contain the proper timezone at the end. like if it's "Asia/Calcutta", then it should be like this : 
+
+      {
+        "starttime": "2024-04-19T09:00:00.000000+05:30",
+        "endtime": "2024-04-19T17:00:00.000000+05:30"
+      }
+
+      And same with different time zones. 
+    `;
+
   const response = await axios.post(
     "https://api.openai.com/v1/chat/completions",
     {
@@ -141,7 +170,11 @@ app.post("/check-availablity", async (req, res) => {
 
   // HANDLE WEEKDAYS
   try {
-    const checkAvailability = await checkFreeSlots(dateAndTimeInJson, getToken);
+    const checkAvailability = await checkFreeSlots(
+      dateAndTimeInJson,
+      getToken,
+      user.timeZone
+    );
 
     const allSlots = checkAvailability
       .map((slot) => {
@@ -222,6 +255,35 @@ app.post("/bookSlot", async (req, res) => {
   This is when the user would like to book: ${dateAndTime}
   `;
 
+  const prompt = `
+      # Context:
+      We have just asked the user when they would like to book a meeting. You will be provided with the current date and their response.
+
+      # Instructions:
+You must return the **start and end times** in **pure JSON format**, without any extra characters, markdown, or explanations, and always in ${user.timeZone} timezone.
+
+      # Output example:
+      {
+        "starttime": "2024-04-19T09:00:00.000000",
+        "endtime": "2024-04-19T17:00:00.000000"
+      }
+
+      # Rules:
+- The output **must be a valid JSON object** (without markdown formatting). 
+- The **start time** must always be **9:00 AM ${user.timeZone}**.  
+- The **end time** must always be **5:00 PM ${user.timeZone}**.  
+- The output must **strictly match the example format**.  
+- Do **not** include explanations, text, or code formatting characters—return **only raw JSON**.
+- Timezone is important so when you give the starttime and endtime, it should contain the proper timezone at the end. like if it's "Asia/Calcutta", then it should be like this : 
+
+      {
+        "starttime": "2024-04-19T09:00:00.000000+05:30",
+        "endtime": "2024-04-19T17:00:00.000000+05:30"
+      }
+
+      And same with different time zones. 
+    `;
+
   const response = await axios.post(
     "https://api.openai.com/v1/chat/completions",
     {
@@ -245,11 +307,15 @@ app.post("/bookSlot", async (req, res) => {
   );
 
   const userRequestTime = dayjs(dateAndTime)
-    .tz("Asia/Kolkata", true)
+    .tz(user.timeZone, true)
     .format("YYYY-MM-DDTHH:mm:ssZ");
 
   try {
-    const freeSlots = await checkFreeSlots(dateAndTimeInJson, getToken);
+    const freeSlots = await checkFreeSlots(
+      dateAndTimeInJson,
+      getToken,
+      user.timeZone
+    );
 
     const isSlotFree = freeSlots.some((slot) => slot.start === userRequestTime);
 
@@ -267,10 +333,13 @@ app.post("/bookSlot", async (req, res) => {
     const event = {
       summary: `Meeting with ${name}`,
       description: `Scheduled Meeting with ${name} (${email})`,
-      start: { dateTime: userRequestTime, timeZone: "Asia/Kolkata" },
+      start: { dateTime: userRequestTime, timeZone: user.timeZone },
       end: {
-        dateTime: dayjs(userRequestTime).add(1, "hour").toISOString(),
-        timeZone: "Asia/Kolkata",
+        dateTime: dayjs(userRequestTime)
+          .add(1, "hour")
+          .tz(user.timeZone)
+          .format(),
+        timeZone: user.timeZone,
       },
       attendees: [{ email }],
       conferenceData: {
@@ -310,11 +379,19 @@ app.post("/bookSlot", async (req, res) => {
 
 app.post("/create-assistant", async (req, res) => {
   try {
-    const { name, voice, language, firstMessage, content, user_id } = req.body;
+    const {
+      name,
+      // voice,
+      language,
+      firstMessage,
+      content,
+      user_id,
+      userTimeZone,
+    } = req.body;
 
     const payload = {
       name,
-      voice: voice || "chris-playht",
+      // voice: voice || "CartesiaVoice",
       language: language || "en-US",
       firstMessage: firstMessage,
       model: {
@@ -400,12 +477,15 @@ Once the customer name, email, and Meeting start time have been confirmed, run t
     if (!findUser) {
       await collection.insertOne({
         userId: user_id,
+        timeZone: userTimeZone,
         assistantId: [response.data.id],
       });
     } else {
       await collection.updateOne(
         { userId: user_id },
-        { $push: { assistantId: response.data.id } }
+        {
+          $push: { assistantId: response.data.id },
+        }
       );
     }
 
