@@ -241,9 +241,12 @@
         if (confirm("Are you sure you want to delete this agent?", agentId)) {
           try {
             // Replace with your actual API endpoint
-            const response = await fetch(`https://api.rpatel.tech/${agentId}`, {
-              method: "DELETE",
-            });
+            const response = await fetch(
+              `https://api.rpatel.tech/delete-assistant/${agentId}`,
+              {
+                method: "DELETE",
+              }
+            );
 
             if (!response.ok) {
               throw new Error("Failed to delete agent");
