@@ -348,6 +348,10 @@ You must return the **start and end times** in **pure JSON format**, without any
 
     console.log(newTime, "This is New time for ending");
 
+    console.log(
+      user.timeZone,
+      "This is Time Zone, that i am passing to the calender."
+    );
     const event = {
       summary: `Meeting with ${name}`,
       description: `Scheduled Meeting with ${name} (${email})`,
