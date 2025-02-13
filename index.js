@@ -318,6 +318,8 @@ You must return the **start and end times** in **pure JSON format**, without any
     .tz(user.timeZone, true)
     .format("YYYY-MM-DDTHH:mm:ssZ");
 
+  console.log(userRequestTime, "This is User Request time");
+
   try {
     const freeSlots = await checkFreeSlots(
       dateAndTimeInJson,
