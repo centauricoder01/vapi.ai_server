@@ -340,6 +340,11 @@ You must return the **start and end times** in **pure JSON format**, without any
       });
     }
 
+    console.log(
+      dayjs(userRequestTime).add(1, "hour").toISOString(),
+      "This is End time for the metting."
+    );
+
     const event = {
       summary: `Meeting with ${name}`,
       description: `Scheduled Meeting with ${name} (${email})`,
