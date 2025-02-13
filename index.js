@@ -345,12 +345,22 @@ You must return the **start and end times** in **pure JSON format**, without any
       "This is End time for the metting."
     );
 
+    let [datePart, timePart] = userRequestTime.split("T");
+    let [hours, minutes, seconds] = timePart.substring(0, 8).split(":");
+    let offset = timePart.substring(8);
+
+    // Convert hours to a number and add 1 hour
+    hours = String(Number(hours) + 1).padStart(2, "0");
+
+    // Construct the new time string
+    const newTime = `${datePart}T${hours}:${minutes}:${seconds}${offset}`;
+
     const event = {
       summary: `Meeting with ${name}`,
       description: `Scheduled Meeting with ${name} (${email})`,
       start: { dateTime: userRequestTime, timeZone: user.timeZone },
       end: {
-        dateTime: dayjs(userRequestTime).add(1, "hour").toISOString(),
+        dateTime: newTime,
         timeZone: user.timeZone,
       },
       attendees: [{ email }],
