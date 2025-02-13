@@ -345,10 +345,7 @@ You must return the **start and end times** in **pure JSON format**, without any
       description: `Scheduled Meeting with ${name} (${email})`,
       start: { dateTime: userRequestTime, timeZone: user.timeZone },
       end: {
-        dateTime: dayjs(userRequestTime)
-          .add(1, "hour")
-          .tz(user.timeZone)
-          .format(),
+        dateTime: dayjs(userRequestTime).add(1, "hour").format(),
         timeZone: user.timeZone,
       },
       attendees: [{ email }],
