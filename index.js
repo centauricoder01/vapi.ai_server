@@ -80,7 +80,6 @@ app.post("/check-availablity", async (req, res) => {
 
   const mainResponse =
     body.message.toolWithToolCallList[0].toolCall.function.arguments;
-  console.dir(body, { depth: null });
 
   const getAssistantId = body.message.call.assistantId;
 
@@ -97,6 +96,8 @@ app.post("/check-availablity", async (req, res) => {
   const dateAndTime = mainResponse._dateAndTime;
 
   let todaysDate = new Date().toISOString();
+
+  console.log(todaysDate, "This is Today's Date.");
 
   const UserPrompt = `
   This is the current date/time: ${todaysDate}
@@ -153,6 +154,8 @@ app.post("/check-availablity", async (req, res) => {
   const dateAndTimeInJson = JSON.parse(
     response.data.choices[0]?.message?.content
   );
+
+  console.log(dateAndTimeInJson, "dateAndTimeInJson");
 
   const dayOfWeek = dayjs(dateAndTimeInJson?.starttime).format("dddd");
 
