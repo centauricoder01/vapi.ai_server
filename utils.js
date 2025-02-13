@@ -42,9 +42,9 @@ export const isOverlapping = (slot, busy) => {
   );
 };
 
-export const checkFreeSlots = async (date) => {
-  const tokens = JSON.parse(fs.readFileSync("token.json"));
-  oauth2Client.setCredentials(tokens);
+export const checkFreeSlots = async (date, token) => {
+  // const tokens = JSON.parse(fs.readFileSync("token.json"));
+  oauth2Client.setCredentials(token);
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
   const startTime = dayjs(date.starttime).format("YYYY-MM-DDTHH:mm:ssZ");

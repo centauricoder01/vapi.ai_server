@@ -4,67 +4,54 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Google Calendar Slot Checker</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f4f8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 1.5rem;
+      }
+      #login {
+        background-color: #4285f4;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      #login:hover {
+        background-color: #357ae8;
+      }
+    </style>
   </head>
   <body>
-    <h1>Google Calendar Slot Checker</h1>
-
-    <button id="login">Login with Google</button>
-    <br /><br />
-    <input type="date" id="datePicker" />
-    <button id="checkSlots">Check Available Slots</button>
-
-    <h2>Available Slots</h2>
-    <ul id="slotsList"></ul>
+    <div class="container">
+      <h1>Google Calendar Slot Checker</h1>
+      <button id="login">Login with Google</button>
+    </div>
 
     <script>
-      // Redirect to Google Auth when login button is clicked
       document.getElementById("login").addEventListener("click", async () => {
         const response = await fetch("http://localhost:3000/auth");
         const data = await response.json();
-        window.location.href = data.url; // Redirect to Google's auth page
+        window.location.href = data.url;
       });
-
-      // Extract the token from URL if present
-      const urlParams = new URLSearchParams(window.location.search);
-      let accessToken = urlParams.get("access_token");
-
-      // Fetch available slots
-      document
-        .getElementById("checkSlots")
-        .addEventListener("click", async () => {
-          if (!accessToken) {
-            alert("Please login first!");
-            return;
-          }
-
-          const date = document.getElementById("datePicker").value;
-          if (!date) {
-            alert("Please select a date!");
-            return;
-          }
-
-          const response = await fetch(
-            `http://localhost:3000/freeSlots?date=${date}`
-          );
-          const slots = await response.json();
-
-          const slotsList = document.getElementById("slotsList");
-          slotsList.innerHTML = ""; // Clear previous results
-
-          if (slots.length === 0) {
-            slotsList.innerHTML = "<li>No available slots</li>";
-          } else {
-            slots.forEach((slot) => {
-              const listItem = document.createElement("li");
-              listItem.textContent = `From: ${new Date(
-                slot.start
-              ).toLocaleTimeString()} - To: ${new Date(
-                slot.end
-              ).toLocaleTimeString()}`;
-              slotsList.appendChild(listItem);
-            });
-          }
-        });
     </script>
   </body>
 </html>
