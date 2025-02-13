@@ -183,9 +183,11 @@ app.post("/check-availablity", async (req, res) => {
 
     const allSlots = checkAvailability
       .map((slot) => {
-        return `${dayjs(slot.start).format("h A")} to ${dayjs(slot.end).format(
-          "h A"
-        )}`;
+        return `${dayjs(slot.start).utcOffset(330).format("h A")} to ${dayjs(
+          slot.end
+        )
+          .utcOffset(330)
+          .format("h A")}`;
       })
       .join(", ");
 
