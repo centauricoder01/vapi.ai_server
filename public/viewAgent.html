@@ -133,7 +133,9 @@
 
       async function fetchAgents() {
         try {
-          const response = await fetch("http://localhost:3000/get-assistants");
+          const response = await fetch(
+            "https://api.rpatel.tech/get-assistants"
+          );
           const agents = await response.json();
           document.getElementById("agentsContainer").innerHTML = "";
           agents?.data?.forEach((agent) => {
@@ -215,7 +217,7 @@
 
         try {
           const response = await fetch(
-            `http://localhost:3000/edit-assistant/${agentId}`,
+            `https://api.rpatel.tech/edit-assistant/${agentId}`,
             {
               method: "PATCH",
               headers: {
@@ -239,12 +241,9 @@
         if (confirm("Are you sure you want to delete this agent?", agentId)) {
           try {
             // Replace with your actual API endpoint
-            const response = await fetch(
-              `http://localhost:3000/delete-assistant/${agentId}`,
-              {
-                method: "DELETE",
-              }
-            );
+            const response = await fetch(`https://api.rpatel.tech/${agentId}`, {
+              method: "DELETE",
+            });
 
             if (!response.ok) {
               throw new Error("Failed to delete agent");
