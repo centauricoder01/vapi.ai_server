@@ -320,6 +320,8 @@ You must return the **start and end times** in **pure JSON format**, without any
       user.timeZone
     );
 
+    console.log(freeSlots, "These are free slots");
+
     const isSlotFree = freeSlots.some((slot) => slot.start === userRequestTime);
 
     if (!isSlotFree) {
