@@ -347,13 +347,15 @@ You must return the **start and end times** in **pure JSON format**, without any
 
     let [datePart, timePart] = userRequestTime.split("T");
     let [hours, minutes, seconds] = timePart.substring(0, 8).split(":");
-    let offset = timePart.substring(8);
+    let offset = timePart.substring(8); // Preserve the original +05:30
 
     // Convert hours to a number and add 1 hour
     hours = String(Number(hours) + 1).padStart(2, "0");
 
     // Construct the new time string
     const newTime = `${datePart}T${hours}:${minutes}:${seconds}${offset}`;
+
+    console.log(newTime, "This is New time for ending");
 
     const event = {
       summary: `Meeting with ${name}`,
