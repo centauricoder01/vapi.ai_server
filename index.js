@@ -97,8 +97,6 @@ app.post("/check-availablity", async (req, res) => {
 
   let todaysDate = new Date().toISOString();
 
-  console.log(todaysDate, "This is Today's Date.");
-
   const UserPrompt = `
   This is the current date/time: ${todaysDate}
   This is when the user would like to book: ${dateAndTime}
@@ -155,8 +153,6 @@ app.post("/check-availablity", async (req, res) => {
     response.data.choices[0]?.message?.content
   );
 
-  console.log(dateAndTimeInJson, "dateAndTimeInJson");
-
   const dayOfWeek = dayjs(dateAndTimeInJson?.starttime).format("dddd");
 
   // HANDLE WEEKENDS
@@ -179,8 +175,6 @@ app.post("/check-availablity", async (req, res) => {
       user.timeZone
     );
 
-    console.log(checkAvailability, "These are free slots");
-
     const allSlots = checkAvailability
       .map((slot) => {
         return `${dayjs(slot.start).utcOffset(330).format("h A")} to ${dayjs(
@@ -191,7 +185,6 @@ app.post("/check-availablity", async (req, res) => {
       })
       .join(", ");
 
-    console.log(allSlots, "This is All Slots, that Vapi will say.");
     return res.status(200).json({
       results: [
         {
@@ -309,8 +302,6 @@ You must return the **start and end times** in **pure JSON format**, without any
     .tz(user.timeZone, true)
     .format("YYYY-MM-DDTHH:mm:ssZ");
 
-  console.log(userRequestTime, "This is User Request time");
-
   try {
     const freeSlots = await checkFreeSlots(
       dateAndTimeInJson,
@@ -331,11 +322,6 @@ You must return the **start and end times** in **pure JSON format**, without any
       });
     }
 
-    console.log(
-      dayjs(userRequestTime).add(1, "hour").toISOString(),
-      "This is End time for the metting."
-    );
-
     let [datePart, timePart] = userRequestTime.split("T");
     let [hours, minutes, seconds] = timePart.substring(0, 8).split(":");
     let offset = timePart.substring(8); // Preserve the original +05:30
@@ -345,13 +331,6 @@ You must return the **start and end times** in **pure JSON format**, without any
 
     // Construct the new time string
     const newTime = `${datePart}T${hours}:${minutes}:${seconds}${offset}`;
-
-    console.log(newTime, "This is New time for ending");
-
-    console.log(
-      user.timeZone,
-      "This is Time Zone, that i am passing to the calender."
-    );
 
     const event = {
       summary: `Meeting with ${name}`,
@@ -369,8 +348,6 @@ You must return the **start and end times** in **pure JSON format**, without any
         },
       },
     };
-
-    console.log(event, "This is Event that we are sending to the calendar");
 
     const createdEvent = await calendar.events.insert({
       calendarId: "primary",
