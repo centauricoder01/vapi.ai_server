@@ -352,6 +352,7 @@ You must return the **start and end times** in **pure JSON format**, without any
       user.timeZone,
       "This is Time Zone, that i am passing to the calender."
     );
+
     const event = {
       summary: `Meeting with ${name}`,
       description: `Scheduled Meeting with ${name} (${email})`,
@@ -368,6 +369,8 @@ You must return the **start and end times** in **pure JSON format**, without any
         },
       },
     };
+
+    console.log(event, "This is Event that we are sending to the calendar");
 
     const createdEvent = await calendar.events.insert({
       calendarId: "primary",
