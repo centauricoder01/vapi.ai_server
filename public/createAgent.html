@@ -108,6 +108,7 @@
           rows="4"
           placeholder="Please enter your first message, that user will here."
         ></textarea>
+
         <label for="system_prompt">System Prompt:</label>
         <textarea
           id="system_prompt"
@@ -143,7 +144,7 @@
 
           try {
             const response = await fetch(
-              "https://api.rpatel.tech/create-assistant",
+              "http://api.rpatel.tech/create-assistant",
               {
                 method: "POST",
                 headers: {
